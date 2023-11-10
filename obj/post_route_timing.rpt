@@ -1,0 +1,102 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2023 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2023.1 (lin64) Build 3865809 Sun May  7 15:04:56 MDT 2023
+| Date         : Thu Nov  9 21:09:42 2023
+| Host         : worker running 64-bit Ubuntu 20.04.6 LTS
+| Command      : report_timing -file obj/post_route_timing.rpt
+| Design       : top_level
+| Device       : 7s50-csga324
+| Speed File   : -1  PRODUCTION 1.23 2018-06-13
+| Design State : Routed
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (VIOLATED) :        -1.195ns  (required time - arrival time)
+  Source:                 mvg/hcount_out_reg[0]_rep__0/C
+                            (rising edge-triggered cell FDRE clocked by clk_pixel_clk_wiz_0  {rise@0.000ns fall@6.734ns period=13.468ns})
+  Destination:            canvas/frame_buff/BRAM_reg_7_2/ENARDEN
+                            (rising edge-triggered cell RAMB36E1 clocked by clk_pixel_clk_wiz_0  {rise@0.000ns fall@6.734ns period=13.468ns})
+  Path Group:             clk_pixel_clk_wiz_0
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            13.468ns  (clk_pixel_clk_wiz_0 rise@13.468ns - clk_pixel_clk_wiz_0 rise@0.000ns)
+  Data Path Delay:        13.971ns  (logic 8.219ns (58.829%)  route 5.752ns (41.171%))
+  Logic Levels:           9  (CARRY4=4 DSP48E1=2 LUT1=1 LUT2=1 LUT3=1)
+  Clock Path Skew:        -0.081ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    -1.538ns = ( 11.930 - 13.468 ) 
+    Source Clock Delay      (SCD):    -0.975ns
+    Clock Pessimism Removal (CPR):    0.482ns
+  Clock Uncertainty:      0.168ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.329ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk_pixel_clk_wiz_0 rise edge)
+                                                      0.000     0.000 r  
+    N15                                               0.000     0.000 r  clk_100mhz (IN)
+                         net (fo=0)                   0.000     0.000    mhdmicw/clk_100mhz
+    N15                  IBUF (Prop_ibuf_I_O)         1.440     1.440 r  mhdmicw/clkin1_ibufg/O
+                         net (fo=1, routed)           1.233     2.673    mhdmicw/clk_ref_clk_wiz_0
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -6.965    -4.291 r  mhdmicw/mmcm_adv_inst/CLKOUT0
+                         net (fo=1, routed)           1.666    -2.625    mhdmicw/clk_pixel_clk_wiz_0
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.096    -2.529 r  mhdmicw/clkout1_buf/O
+                         net (fo=233, routed)         1.554    -0.975    mvg/clk_pixel
+    SLICE_X55Y22         FDRE                                         r  mvg/hcount_out_reg[0]_rep__0/C
+  -------------------------------------------------------------------    -------------------
+    SLICE_X55Y22         FDRE (Prop_fdre_C_Q)         0.456    -0.519 f  mvg/hcount_out_reg[0]_rep__0/Q
+                         net (fo=1, routed)           0.416    -0.102    mvg/hcount_out_reg[0]_rep__0_n_0
+    SLICE_X54Y21         LUT1 (Prop_lut1_I0_O)        0.124     0.022 r  mvg/in_brush2_carry_i_4/O
+                         net (fo=1, routed)           0.000     0.022    canvas/S[0]
+    SLICE_X54Y21         CARRY4 (Prop_carry4_S[0]_CO[3])
+                                                      0.513     0.535 r  canvas/in_brush2_carry/CO[3]
+                         net (fo=1, routed)           0.000     0.535    canvas/in_brush2_carry_n_0
+    SLICE_X54Y22         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.117     0.652 r  canvas/in_brush2_carry__0/CO[3]
+                         net (fo=1, routed)           0.000     0.652    canvas/in_brush2_carry__0_n_0
+    SLICE_X54Y23         CARRY4 (Prop_carry4_CI_O[1])
+                                                      0.323     0.975 r  canvas/in_brush2_carry__1/O[1]
+                         net (fo=2, routed)           0.594     1.569    canvas/A[9]
+    DSP48_X1Y8           DSP48E1 (Prop_dsp48e1_A[9]_P[8])
+                                                      4.023     5.592 r  canvas/in_brush1/P[8]
+                         net (fo=1, routed)           0.817     6.409    canvas/in_brush1_n_97
+    DSP48_X1Y10          DSP48E1 (Prop_dsp48e1_C[8]_P[0])
+                                                      1.820     8.229 f  canvas/in_brush0/P[0]
+                         net (fo=1, routed)           0.607     8.836    canvas/frame_buff/P[0]
+    SLICE_X55Y26         LUT2 (Prop_lut2_I0_O)        0.124     8.960 r  canvas/frame_buff/in_brush_carry_i_1/O
+                         net (fo=1, routed)           0.330     9.290    canvas/frame_buff_n_6
+    SLICE_X54Y27         CARRY4 (Prop_carry4_CYINIT_CO[3])
+                                                      0.595     9.885 r  canvas/in_brush_carry/CO[3]
+                         net (fo=48, routed)          1.787    11.672    mvg/CO[0]
+    SLICE_X54Y52         LUT3 (Prop_lut3_I0_O)        0.124    11.796 r  mvg/BRAM_reg_7_2_i_1/O
+                         net (fo=1, routed)           1.200    12.996    canvas/frame_buff/BRAM_reg_7_2_1[0]
+    RAMB36_X2Y15         RAMB36E1                                     r  canvas/frame_buff/BRAM_reg_7_2/ENARDEN
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk_pixel_clk_wiz_0 rise edge)
+                                                     13.468    13.468 r  
+    N15                                               0.000    13.468 r  clk_100mhz (IN)
+                         net (fo=0)                   0.000    13.468    mhdmicw/clk_100mhz
+    N15                  IBUF (Prop_ibuf_I_O)         1.370    14.838 r  mhdmicw/clkin1_ibufg/O
+                         net (fo=1, routed)           1.162    16.000    mhdmicw/clk_ref_clk_wiz_0
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                     -7.221     8.779 r  mhdmicw/mmcm_adv_inst/CLKOUT0
+                         net (fo=1, routed)           1.587    10.366    mhdmicw/clk_pixel_clk_wiz_0
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.091    10.457 r  mhdmicw/clkout1_buf/O
+                         net (fo=233, routed)         1.473    11.930    canvas/frame_buff/clk_pixel
+    RAMB36_X2Y15         RAMB36E1                                     r  canvas/frame_buff/BRAM_reg_7_2/CLKARDCLK
+                         clock pessimism              0.482    12.412    
+                         clock uncertainty           -0.168    12.244    
+    RAMB36_X2Y15         RAMB36E1 (Setup_ramb36e1_CLKARDCLK_ENARDEN)
+                                                     -0.443    11.801    canvas/frame_buff/BRAM_reg_7_2
+  -------------------------------------------------------------------
+                         required time                         11.801    
+                         arrival time                         -12.996    
+  -------------------------------------------------------------------
+                         slack                                 -1.195    
+
+
+
+

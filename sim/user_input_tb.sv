@@ -54,6 +54,12 @@ module user_input_tb();
             sw_con_in = 0;
         end
 
+        pos_con_in = 4'b0110;
+        #1500;
+        pos_con_in = 4'b1001;
+        #1500;
+        pos_con_in = 0;
+
         #500;
 
         $display("Simulation finished");

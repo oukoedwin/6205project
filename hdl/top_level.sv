@@ -72,8 +72,7 @@ module top_level(
     .valid_addr_out(valid_addr_scaled)
   );
 
-  //gui_sprite output:
-  logic [7:0] gui_red, gui_green, gui_blue;
+  
 
   logic [3:0] pos_control;
   logic col_control;
@@ -102,6 +101,23 @@ module top_level(
     .stroke_width(stroke_width)
   );
 
+  //gui_sprite output:
+  logic [7:0] gui_red, gui_green, gui_blue;
+  logic in_sprite;
+
+  gui_sprite gui_sprite (
+    .clk_in(clk_pixel),
+    .rst_in(sys_rst),
+    .cursor_color(cursor_color),
+    .stroke_width(stroke_width),
+    .hcount_in(hcount),
+    .vcount_in(vcount),
+    .red_out(gui_red),
+    .green_out(gui_green),
+    .blue_out(gui_blue),
+    .in_sprite(in_sprite)
+  );
+
 
   logic [7:0] fb_red, fb_green, fb_blue;
 
@@ -123,8 +139,12 @@ module top_level(
 
   logic [7:0] final_red, final_green, final_blue;
 
-  always_comb begin 
-    if (hcount_scaled == cursor_loc_x || vcount_scaled == cursor_loc_y) begin 
+  always_comb begin
+    if (in_sprite) begin 
+        final_red = gui_red;
+        final_blue = gui_blue;
+        final_green = gui_green;
+    end else if (hcount_scaled == cursor_loc_x || vcount_scaled == cursor_loc_y) begin 
         final_red = 8'h00;
         final_blue = 8'hFF;
         final_green = 8'h80;

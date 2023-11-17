@@ -121,6 +121,26 @@ module frame_buffer(
                 green_out = 8'h00;
                 blue_out = 8'hFF;
             end
+            4'b0101: begin //cyan
+                red_out = 8'h00;
+                green_out = 8'hFF;
+                blue_out = 8'hFF;
+            end
+            4'b0110: begin //magenta
+                red_out = 8'hFF;
+                green_out = 8'h00;
+                blue_out = 8'hFF;
+            end
+            4'b0111: begin //yellow
+                red_out = 8'hFF;
+                green_out = 8'hFF;
+                blue_out = 8'h00;
+            end
+            4'b1000: begin //gray
+                red_out = 8'h80;
+                green_out = 8'h80;
+                blue_out = 8'h80;
+            end
             default: begin //default (white)
                 red_out = 8'hFF;
                 green_out = 8'hFF;

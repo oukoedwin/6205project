@@ -11,7 +11,7 @@ module user_input(
     output logic [2:0] stroke_width
 );
 
-    localparam MOVE_AMT = 5;
+    localparam MOVE_AMT = 1;
 
     logic prev_col_in;
     logic prev_sw_in;
@@ -20,8 +20,8 @@ module user_input(
 
     always_ff @(posedge clk_in)begin 
         if (rst_in) begin 
-            cursor_loc_x <= 0;
-            cursor_loc_y <= 0;
+            cursor_loc_x <= 320;
+            cursor_loc_y <= 180;
             cursor_color <= 0;
             stroke_width <= 0;
         end else begin 
@@ -44,8 +44,8 @@ module user_input(
                 end
                 //cursor right
                 if (pos_con_in[2]) begin 
-                    if (cursor_loc_x+MOVE_AMT > 639) begin
-                        cursor_loc_x <= 639;
+                    if (cursor_loc_x+MOVE_AMT > 638) begin
+                        cursor_loc_x <= 638;
                     end else begin 
                         cursor_loc_x <= cursor_loc_x + MOVE_AMT;
                     end

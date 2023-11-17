@@ -17,17 +17,39 @@ module frame_buffer(
 
     logic [$clog2(360*640)-1:0] write_addr;
     logic [$clog2(360*640)-1:0] read_addr;
-    assign write_addr = hcount_in + 360*vcount_in;
-    assign read_addr = hcount_in + 360*vcount_in;
-
-    logic [6:0] radius;
-    assign radius = (sw_in+1)*2;
 
 
+
+    assign write_addr = hcount_in + 640*vcount_in;
+    assign read_addr = hcount_in + 640*vcount_in;
+
+    /*
+    logic in_brush;
+    assign in_brush = (hcount_in == x_in) && (vcount_in == y_in);
+    */
+
+    
+    logic signed [9:0] radius;
+    assign radius = {1'b0,(sw_in+1)*2-1};
+
+    logic signed [23:0] h_min_x; 
+    assign h_min_x = ($signed({2'b0,hcount_in}) - $signed({2'b0,x_in}))*($signed({2'b0,hcount_in}) - $signed({2'b0,x_in}));
+    logic signed [23:0] v_min_y; 
+    assign v_min_y = ($signed({2'b0,vcount_in}) - $signed({2'b0,y_in}))*($signed({2'b0,vcount_in}) - $signed({2'b0,y_in}));
+
+    logic in_brush;
+    assign in_brush = ((radius*radius) >= 
+                        (h_min_x + v_min_y));
+
+
+
+    /*
     logic in_brush;
     assign in_brush = ((radius*radius) >= 
                         ((hcount_in - x_in)*(hcount_in - x_in) + 
                          (vcount_in-y_in)*(vcount_in-y_in)));
+    */
+    
 
 
     /*
@@ -71,7 +93,7 @@ module frame_buffer(
     .doutb(doutb)    // Port B RAM output data, width determined from RAM_WIDTH
     );
 
-
+    
     always_comb begin
         case (doutb)
             4'b0000: begin //black
@@ -106,6 +128,21 @@ module frame_buffer(
             end
         endcase
     end
+    
+    /*
+    always_comb begin 
+        if (doutb == 4'b0001) begin 
+            red_out = 8'hFF;
+            green_out = 8'hFF;
+            blue_out = 8'hFF;
+        end else begin 
+            red_out = 8'h00;
+            green_out = 8'h00;
+            blue_out = 8'h00;
+        end
+    end */
+
+
 
 
 

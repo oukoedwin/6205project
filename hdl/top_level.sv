@@ -49,6 +49,10 @@ module top_level(
   logic new_frame; //new frame (use this to trigger center of mass calculations)
   logic [5:0] frame_count; //current frame
 
+  logic [9:0] hcount_scaled;
+  logic [8:0] vcount_scaled;
+  logic valid_addr_scaled;
+
   video_sig_gen mvg(
       .clk_pixel_in(clk_pixel),
       .rst_in(sys_rst),
@@ -60,11 +64,18 @@ module top_level(
       .nf_out(new_frame),
       .fc_out(frame_count));
 
+    scale(
+    .hcount_in(hcount),
+    .vcount_in(vcount),
+    .scaled_hcount_out(hcount_scaled),
+    .scaled_vcount_out(vcount_scaled),
+    .valid_addr_out(valid_addr_scaled)
+  );
 
   //gui_sprite output:
   logic [7:0] gui_red, gui_green, gui_blue;
 
-  logic pos_control;
+  logic [3:0] pos_control;
   logic col_control;
   logic sw_control;
   assign pos_control = {sw[15:14],sw[1:0]};
@@ -100,8 +111,8 @@ module top_level(
     .rst_in(sys_rst),
     .x_in(cursor_loc_x),
     .y_in(cursor_loc_y),
-    .hcount_in(hcount),
-    .vcount_in(vcount),
+    .hcount_in(hcount_scaled),
+    .vcount_in(vcount_scaled),
     .color_in(cursor_color),
     .sw_in(stroke_width),
     .nf_in(new_frame),
@@ -109,6 +120,21 @@ module top_level(
     .green_out(fb_green),
     .blue_out(fb_blue)
   );
+
+  logic [7:0] final_red, final_green, final_blue;
+
+  always_comb begin 
+    if (hcount_scaled == cursor_loc_x || vcount_scaled == cursor_loc_y) begin 
+        final_red = 8'h00;
+        final_blue = 8'hFF;
+        final_green = 8'h80;
+    end else begin 
+        final_red = fb_red;
+        final_blue = fb_blue;
+        final_green = fb_green;
+        
+    end
+  end
 
 
 
@@ -121,7 +147,7 @@ module top_level(
   tmds_encoder tmds_red(
       .clk_in(clk_pixel),
       .rst_in(sys_rst),
-      .data_in(fb_red),
+      .data_in(final_red),
       .control_in(2'b0),
       .ve_in(active_draw),
       .tmds_out(tmds_10b[2]));
@@ -129,7 +155,7 @@ module top_level(
   tmds_encoder tmds_green(
       .clk_in(clk_pixel),
       .rst_in(sys_rst),
-      .data_in(fb_green),
+      .data_in(final_green),
       .control_in(2'b0),
       .ve_in(active_draw),
       .tmds_out(tmds_10b[1]));
@@ -137,7 +163,7 @@ module top_level(
   tmds_encoder tmds_blue(
       .clk_in(clk_pixel),
       .rst_in(sys_rst),
-      .data_in(fb_blue),
+      .data_in(final_blue),
       .control_in({vert_sync,hor_sync}),
       .ve_in(active_draw),
       .tmds_out(tmds_10b[0]));

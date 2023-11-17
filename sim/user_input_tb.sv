@@ -4,6 +4,7 @@
 module user_input_tb();
     logic clk_in;
     logic rst_in;
+    logic nf_in;
     logic [3:0] pos_con_in;
     logic col_con_in;
     logic sw_con_in;
@@ -15,6 +16,7 @@ module user_input_tb();
     user_input test(
         .clk_in(clk_in),
         .rst_in(rst_in),
+        .nf_in(nf_in),
         .pos_con_in(pos_con_in),
         .col_con_in(col_con_in),
         .sw_con_in(sw_con_in),
@@ -28,6 +30,13 @@ module user_input_tb();
       clk_in = !clk_in;
     end
 
+    always begin 
+        #50;
+        nf_in = 1;
+        #5;
+        nf_in = 0;
+    end
+
     initial begin
         $dumpfile("user_input.vcd"); //file to store value change dump (vcd)
         $dumpvars(0,user_input_tb);
@@ -35,6 +44,7 @@ module user_input_tb();
 
         clk_in = 0;
         rst_in = 0;
+        nf_in = 0;
         pos_con_in = 0;
         col_con_in = 0;
         sw_con_in = 0;

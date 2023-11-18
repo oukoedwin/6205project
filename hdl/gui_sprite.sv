@@ -76,7 +76,7 @@ module gui_sprite(
         end else begin 
             if (hcount_in <= 100) begin 
                 in_sprite <= 1;
-                if (hcount_in >= 20 && hcount_in <= 80 && vcount_in >= 20 & vcount_in <= 80) begin 
+                if (hcount_in >= 20 && hcount_in <= 80 && vcount_in >= 20 & vcount_in <= 80) begin //color square
                     red_out <= red;
                     green_out <= green;
                     blue_out <= blue;

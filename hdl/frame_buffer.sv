@@ -4,10 +4,10 @@
 module frame_buffer(
     input wire pixel_clk_in,
     input wire rst_in,
-    input wire [9:0] x_in, hcount_in,
-    input wire [8:0]  y_in, vcount_in,
-    input wire [3:0] color_in,
-    input wire [2:0] sw_in,
+    input wire [9:0] x_in1, x_in2, hcount_in,
+    input wire [8:0]  y_in1, y_in2, vcount_in,
+    input wire [3:0] color_in1, color_in2,
+    input wire [2:0] sw_in1, sw_in2,
     input wire nf_in,
     output logic [7:0] red_out,
     output logic [7:0] green_out,
@@ -15,13 +15,11 @@ module frame_buffer(
 );
     logic [3:0] doutb;
 
-    logic [$clog2(360*640)-1:0] write_addr;
-    logic [$clog2(360*640)-1:0] read_addr;
+    logic [$clog2(360*640)-1:0] addr;
 
 
 
-    assign write_addr = hcount_in + 640*vcount_in;
-    assign read_addr = hcount_in + 640*vcount_in;
+    assign addr = hcount_in + 640*vcount_in;
 
     /*
     logic in_brush;
@@ -29,17 +27,29 @@ module frame_buffer(
     */
 
     
-    logic signed [9:0] radius;
-    assign radius = {1'b0,(sw_in+1)*2-1};
+    logic signed [9:0] radius1;
+    assign radius1 = {1'b0,(sw_in1+1)*2-1};
 
-    logic signed [23:0] h_min_x; 
-    assign h_min_x = ($signed({2'b0,hcount_in}) - $signed({2'b0,x_in}))*($signed({2'b0,hcount_in}) - $signed({2'b0,x_in}));
+    logic signed [23:0] h_min_x1; 
+    assign h_min_x1 = ($signed({2'b0,hcount_in}) - $signed({2'b0,x_in1}))*($signed({2'b0,hcount_in}) - $signed({2'b0,x_in1}));
     logic signed [23:0] v_min_y; 
-    assign v_min_y = ($signed({2'b0,vcount_in}) - $signed({2'b0,y_in}))*($signed({2'b0,vcount_in}) - $signed({2'b0,y_in}));
+    assign v_min_y1 = ($signed({2'b0,vcount_in}) - $signed({2'b0,y_in1}))*($signed({2'b0,vcount_in}) - $signed({2'b0,y_in1}));
 
-    logic in_brush;
-    assign in_brush = ((radius*radius) >= 
-                        (h_min_x + v_min_y));
+    logic signed [9:0] radius2;
+    assign radius2 = {1'b0,(sw_in2+1)*2-1};
+
+    logic signed [23:0] h_min_x2; 
+    assign h_min_x2 = ($signed({2'b0,hcount_in}) - $signed({2'b0,x_in2}))*($signed({2'b0,hcount_in}) - $signed({2'b0,x_in2}));
+    logic signed [23:0] v_min_y2; 
+    assign v_min_y2 = ($signed({2'b0,vcount_in}) - $signed({2'b0,y_in2}))*($signed({2'b0,vcount_in}) - $signed({2'b0,y_in2}));
+
+    logic in_brush1;
+    assign in_brush1 = ((radius1*radius1) >= 
+                        (h_min_x1 + v_min_y1));
+    
+    logic in_brush2;
+    assign in_brush2 = ((radius2*radius2) >= 
+                        (h_min_x2 + v_min_y2));
 
 
 
@@ -75,14 +85,14 @@ module frame_buffer(
     .RAM_PERFORMANCE("HIGH_PERFORMANCE"), // Select "HIGH_PERFORMANCE" or "LOW_LATENCY"
     .INIT_FILE("")                        // Specify name/location of RAM initialization file if using one (leave blank if not)
     ) frame_buff (
-    .addra(write_addr),   // Port A address bus, width determined from RAM_DEPTH
-    .addrb(read_addr),   // Port B address bus, width determined from RAM_DEPTH
-    .dina(color_in),     // Port A RAM input data, width determined from RAM_WIDTH
-    .dinb(4'b0),     // Port B RAM input data, width determined from RAM_WIDTH
+    .addra(addr),   // Port A address bus, width determined from RAM_DEPTH
+    .addrb(addr),   // Port B address bus, width determined from RAM_DEPTH
+    .dina(color_in1),     // Port A RAM input data, width determined from RAM_WIDTH
+    .dinb(color_in2),     // Port B RAM input data, width determined from RAM_WIDTH
     .clka(pixel_clk_in),     // Port A clock
     .clkb(pixel_clk_in),     // Port B clock
-    .wea(in_brush),       // Port A write enable
-    .web(1'b0),       // Port B write enable
+    .wea(in_brush1),       // Port A write enable
+    .web(in_brush2),       // Port B write enable
     .ena(1'b1),       // Port A RAM Enable, for additional power savings, disable port when not in use
     .enb(1'b1),       // Port B RAM Enable, for additional power savings, disable port when not in use
     .rsta(rst_in),     // Port A output reset (does not affect memory contents)

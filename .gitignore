@@ -1,0 +1,7 @@
+# Ignore these files
+./obj/*
+./*.jou
+./*.log
+
+# Don't ignore these files
+!./obj/final.bit

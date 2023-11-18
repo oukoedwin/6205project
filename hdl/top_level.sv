@@ -15,32 +15,39 @@ module top_level(
   output logic [6:0] ss1_c,
   output logic [3:0] ss0_an,
   output logic [3:0] ss1_an,
-  input wire [7:0] pmoda,
-  input wire [2:0] pmodb,
-  output logic pmodbclk,
-  output logic pmodblock
+  output logic [7:0] pmoda,
+  input wire [1:0] pmodb
   );
-  assign led = sw; //for debugging
-  //shut up those rgb LEDs (active high):
+
+  // Connect switches to LED bank for debugging
+  assign led = sw;
+  // Shh those rgb LEDs (active high)
   assign rgb1= 0;
   assign rgb0 = 0;
 
-  //have btnd control system reset
+  // System Reset
   logic sys_rst;
   assign sys_rst = btn[0];
 
+  // Clock Buffer
+  logic buffered_clk_100mhz;
+  BUFG system_clk_buffer (
+    .O(buffered_clk_100mhz),
+    .I(clk_100mhz)
+  );
+
+  // HDMI Clock
   logic clk_pixel, clk_5x; //clock lines
   logic locked; //locked signal (we'll leave unused but still hook it up)
- 
   //clock manager...creates 74.25 MHz and 5 times 74.25 MHz for pixel and TMDS
   hdmi_clk_wiz_720p mhdmicw (
       .reset(0),
       .locked(locked),
-      .clk_ref(clk_100mhz),
+      .clk_ref(buffered_clk_100mhz),
       .clk_pixel(clk_pixel),
       .clk_tmds(clk_5x));
 
-  //Signals related to driving the video pipeline
+  // Signals related to driving the video pipeline
   logic [10:0] hcount; //horizontal count
   logic [9:0] vcount; //vertical count
   logic vert_sync; //vertical sync signal
@@ -125,12 +132,16 @@ module top_level(
   frame_buffer canvas (
     .pixel_clk_in(clk_pixel),
     .rst_in(sys_rst),
-    .x_in(cursor_loc_x),
-    .y_in(cursor_loc_y),
+    .x_in1(cursor_loc_x),
+    .x_in2(comm_x_loc),
+    .y_in1(cursor_loc_y),
+    .y_in2(comm_y_loc),
     .hcount_in(hcount_scaled),
     .vcount_in(vcount_scaled),
-    .color_in(cursor_color),
-    .sw_in(stroke_width),
+    .color_in1(cursor_color),
+    .color_in2(comm_color),
+    .sw_in1(stroke_width),
+    .sw_in2(comm_sw),
     .nf_in(new_frame),
     .red_out(fb_red),
     .green_out(fb_green),
@@ -159,11 +170,10 @@ module top_level(
 
 
 
+  // TMDS Pipeline
   logic [9:0] tmds_10b [0:2]; //output of each TMDS encoder!
   logic tmds_signal [2:0]; //output of each TMDS serializer!
- 
   //three tmds_encoders (blue, green, red)
- 
   tmds_encoder tmds_red(
       .clk_in(clk_pixel),
       .rst_in(sys_rst),
@@ -189,7 +199,6 @@ module top_level(
       .tmds_out(tmds_10b[0]));
  
   //three tmds_serializers (blue, green, red):
-  //MISSING: two more serializers for the green and blue tmds signals.
   tmds_serializer red_ser(
       .clk_pixel_in(clk_pixel),
       .clk_5x_in(clk_5x),
@@ -222,6 +231,48 @@ module top_level(
   OBUFDS OBUFDS_red  (.I(tmds_signal[2]), .O(hdmi_tx_p[2]), .OB(hdmi_tx_n[2]));
   OBUFDS OBUFDS_clock(.I(clk_pixel), .O(hdmi_clk_p), .OB(hdmi_clk_n));
 
+  // COMMUNICATION MODULE
+  logic diff_data_out, diff_data_in, diff_in_sync, new_code_out;
+  logic [25:0] code_out;
+  // Transmit the cursor location on every new frame.
+  diff_tx dtx (
+      .clk_in(buffered_clk_100mhz),
+      .rst_in(sys_rst),
+      .trigger_in(new_frame),
+      .data_in({cursor_loc_x, cursor_loc_y, cursor_color, stroke_width}),
+      .data_out(diff_data_out)
+  );
+  always_comb begin
+    pmoda[0] = diff_data_out;
+    pmoda[4] = !diff_data_out;
+  end
+  // Receive the cursor location from the other FPGA.
+  IBUFDS drx_i (.I(pmodb[0]), .IB(pmodb[1]), .O(diff_data_in));
+  synchronizer s_rx (
+      .clk_in(buffered_clk_100mhz),
+      .rst_in(sys_rst),
+      .us_in(diff_data_in),
+      .s_out(diff_in_sync)
+  );
+  diff_rx drx (
+      .clk_in(buffered_clk_100mhz),
+      .rst_in(sys_rst),
+      .data_in(diff_in_sync),
+      .code_out(code_out),
+      .new_code_out(new_code_out)
+  );
+  logic [9:0] comm_x_loc;
+  logic [8:0] comm_y_loc;
+  logic [3:0] comm_color;
+  logic [2:0] comm_sw;
+  always_ff @(posedge buffered_clk_100mhz) begin
+    if (new_code_out) begin
+      comm_x_loc <= code_out[25:16];
+      comm_y_loc <= code_out[15:7];
+      comm_color <= code_out[6:3];
+      comm_sw <= code_out[2:0];
+    end
+  end
 
 endmodule // top_level
 `default_nettype wire

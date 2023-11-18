@@ -5,7 +5,7 @@ module frame_buffer(
     input wire pixel_clk_in,
     input wire rst_in,
     input wire [9:0] x_in1, x_in2, hcount_in,
-    input wire [8:0]  y_in1, y_in2, vcount_in,
+    input wire [8:0] y_in1, y_in2, vcount_in,
     input wire [3:0] color_in1, color_in2,
     input wire [2:0] sw_in1, sw_in2,
     input wire nf_in,
@@ -16,8 +16,6 @@ module frame_buffer(
     logic [3:0] doutb;
 
     logic [$clog2(360*640)-1:0] addr;
-
-
 
     assign addr = hcount_in + 640*vcount_in;
 
@@ -32,7 +30,7 @@ module frame_buffer(
 
     logic signed [23:0] h_min_x1; 
     assign h_min_x1 = ($signed({2'b0,hcount_in}) - $signed({2'b0,x_in1}))*($signed({2'b0,hcount_in}) - $signed({2'b0,x_in1}));
-    logic signed [23:0] v_min_y; 
+    logic signed [23:0] v_min_y1; 
     assign v_min_y1 = ($signed({2'b0,vcount_in}) - $signed({2'b0,y_in1}))*($signed({2'b0,vcount_in}) - $signed({2'b0,y_in1}));
 
     logic signed [9:0] radius2;

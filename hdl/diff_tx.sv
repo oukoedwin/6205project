@@ -117,4 +117,4 @@ module diff_tx
     end
 
 endmodule
-`default_nettype none
+`default_nettype wire

@@ -16,7 +16,14 @@ module top_level(
   output logic [3:0] ss0_an,
   output logic [3:0] ss1_an,
   output logic [7:0] pmoda,
-  input wire [1:0] pmodb
+  input wire [1:0] pmodb,
+  output logic SD_CMD,
+  output logic SD_CLK,
+  input wire SD_CD_N,
+  inout wire SD_DQ0,
+  inout wire SD_DQ1,
+  inout wire SD_DQ2,
+  inout wire SD_DQ3
   );
 
   // Connect switches to LED bank for debugging
@@ -28,6 +35,11 @@ module top_level(
   // System Reset
   logic sys_rst;
   assign sys_rst = btn[0];
+
+  // signals for working with SD card
+  logic draw, slide_show, sd_reset;
+  assign draw = sw[2];
+  assign slide_show = sw[3];
 
   // Clock Buffer
   logic buffered_clk_100mhz;
@@ -125,9 +137,7 @@ module top_level(
     .in_sprite(in_sprite)
   );
 
-
   logic [7:0] fb_red, fb_green, fb_blue;
-
 
   frame_buffer canvas (
     .pixel_clk_in(clk_pixel),
@@ -139,13 +149,21 @@ module top_level(
     .hcount_in(hcount_scaled),
     .vcount_in(vcount_scaled),
     .color_in1(cursor_color),
-    .color_in2(comm_color),
+    .color_in2(comm_color), 
     .sw_in1(stroke_width),
     .sw_in2(comm_sw),
     .nf_in(new_frame),
     .red_out(fb_red),
     .green_out(fb_green),
-    .blue_out(fb_blue)
+    .blue_out(fb_blue),
+    .slide_show(slide_show),
+    .draw(draw),
+    .clk_100mhz(clk_100mhz),
+    .sd_cd(SD_CD_N), 
+    .sd_dat({SD_DQ3, SD_DQ2, SD_DQ1, SD_DQ0}),
+    .sd_reset(sd_reset), 
+    .sd_sck(SD_CLK), 
+    .sd_cmd(SD_CMD) 
   );
 
   logic [7:0] final_red, final_green, final_blue;
@@ -163,7 +181,6 @@ module top_level(
         final_red = fb_red;
         final_blue = fb_blue;
         final_green = fb_green;
-        
     end
   end
 

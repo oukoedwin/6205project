@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+`default_nettype none
 module tm_choice (
   input wire [7:0] data_in,
   output logic [8:0] qm_out
@@ -41,3 +43,4 @@ module tm_choice (
 
 
 endmodule //end tm_choice
+`default_nettype wire

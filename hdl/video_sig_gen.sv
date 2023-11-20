@@ -1,3 +1,6 @@
+`timescale 1ns / 1ps
+`default_nettype none
+
 module video_sig_gen
 #(
   parameter ACTIVE_H_PIXELS = 1280,
@@ -86,3 +89,4 @@ module video_sig_gen
   end
  
 endmodule
+`default_nettype wire

@@ -1,3 +1,6 @@
+`timescale 1ns / 1ps
+`default_nettype none
+
 module user_input(
     input wire clk_in,
     input wire rst_in,
@@ -81,3 +84,4 @@ module user_input(
     end
 
 endmodule //user_input
+`default_nettype wire

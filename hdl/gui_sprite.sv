@@ -1,3 +1,6 @@
+`timescale 1ns / 1ps
+`default_nettype none
+
 module gui_sprite(
     input wire clk_in,
     input wire rst_in,
@@ -92,3 +95,5 @@ module gui_sprite(
     end
 
 endmodule
+
+`default_nettype wire

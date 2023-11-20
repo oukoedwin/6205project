@@ -1,3 +1,6 @@
+`timescale 1ns / 1ps
+`default_nettype none
+
 module tmds_encoder(
   input wire clk_in,
   input wire rst_in,
@@ -88,3 +91,5 @@ module tmds_encoder(
   end
 
 endmodule //end tmds_encoder
+
+`default_nettype wire

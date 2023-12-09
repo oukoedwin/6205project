@@ -8,7 +8,6 @@ module frame_buffer(
     input wire rst_in,
     input wire slide_show, 
     input wire draw, 
-    input wire reset_SD_card,
     inout wire [3:0] sd_dat, 
     output logic sd_reset,
     output logic sd_sck,
@@ -20,29 +19,8 @@ module frame_buffer(
     input wire nf_in,
     output logic [7:0] red_out,
     output logic [7:0] green_out,
-    output logic [7:0] blue_out,
-    output logic [15:0] led
+    output logic [7:0] blue_out
 );
-
-    // UPDATES
-    // - support permanent storage by using the first 2 bytes in the SD card to keep track of the address of the last 
-    //   image stored in the SD card
-    // - use the signal reset_SD_card to reset this address back to zero
-
-    // TESTING
-    // Draw an image, save. Draw another image, save. Draw another image, save. Slide show to check original functionality
-    // Erase images and try to slide show (should fail - on-screen image should stays)
-
-    // BUGS TO FIX
-    // - drawing behind on-display menu
-    // - white screen bug (high priority)
-
-    // Remaining work
-    // - 
-    // - optimizing storage (8 bytes to store data corresponding to two locations)
-    // - allow slide show using buttons
-    // - 
-
     logic [3:0] doutb;
 
     logic [$clog2(360*640)-1:0] input_addra;
@@ -55,7 +33,6 @@ module frame_buffer(
     assign addr = hcount_in + 640*vcount_in;
 
     logic [$clog2(360*640)-1:0] sd_buffer_index; // current index in the buffer that is being read from or written to from the SD card
-    logic [10:0] special_SD_address;
     logic [31:0] index_to_write_next_sector; // index in SD card where the next byte should be written to
     localparam SECTOR_SIZE = 512; // sector size in bytes
     // each image takes (640*360)/512 = 450 sectors
@@ -65,8 +42,7 @@ module frame_buffer(
     logic mem_to_buffer_wr; // whether to enable buffer port to be written with data from SD memory
     logic [7:0] memout_bin; // data from SD memory to be written to buffer
     logic [7:0] bout_memin; // data from buffer to be written to SD memory
-    typedef enum {IDLE=1, SLIDE_SHOW_SECTOR=2, SLIDE_SHOW_NEW_SECTOR=3, SLIDE_SHOW_NEXT_IMAGE=4, DRAWING=5, SAVING_SECTOR=6, FINISHED_SAVING_SECTOR=7,
-    START_SEC_ADDR_READ=8, READ_ADDR=9, START_SEC_ADDR_WRITE=10, OVERWRITE_ADDR=11} states;
+    typedef enum {IDLE=1, SLIDE_SHOW_SECTOR=2, SLIDE_SHOW_NEW_SECTOR=3, SLIDE_SHOW_NEXT_IMAGE=4, DRAWING=5, SAVING_SECTOR=6, FINISHED_SAVING_SECTOR=7} states;
     states state;
     // sd_controller inputs
     logic rd;                   // read enable
@@ -166,7 +142,7 @@ module frame_buffer(
     .doutb(doutb)    // Port B RAM output data, width determined from RAM_WIDTH
     );
 
-    assign led = state;
+    
     always_comb begin
         if (state == DRAWING) begin
             input_addra = addr;
@@ -252,12 +228,11 @@ module frame_buffer(
             state <= IDLE;
             mem_to_buffer_wr <= 0;
             sd_buffer_index <= 0;
-            index_to_write_next_sector <= 512;
+            index_to_write_next_sector <= 0;
             prev_byte_available <= 0;
             prev_ready_for_next_byte <= 0;
             write_inc <= 0;
             cycle_count <= 0;
-            special_SD_address <= 0;
         end else begin
             prev_byte_available <= byte_available;
             prev_ready_for_next_byte <= ready_for_next_byte;
@@ -265,38 +240,11 @@ module frame_buffer(
                 IDLE: begin
                     sd_buffer_index <= 0; 
                     if (slide_show) begin
-                        state <= START_SEC_ADDR_READ;
+                        state <= SLIDE_SHOW_NEW_SECTOR;
+                        sd_addr <= 0; // start writing to the buffer from the beginning
                     end else if (draw) begin // draw only writes to the buffer, no action on this side
                         state <= DRAWING;
                         mem_to_buffer_wr <= 0;
-                    end else if (reset_SD_card) begin // erases all memory previously to the SD card (lazily)
-                        index_to_write_next_sector <= 0; 
-                        state <= START_SEC_ADDR_WRITE;
-                    end
-                end
-                START_SEC_ADDR_READ: begin // wait for the ready signal to read the location/address of the image last written to the SD card
-                    if (ready) begin
-                        state <= READ_ADDR;
-                        sd_addr <= 0; // read address from the first sector
-                        rd <= 1;
-                        special_SD_address <= 0;
-                    end
-                end
-                READ_ADDR: begin // read the location/address of the image last written to the SD card
-                    // read the first two bytes in the SD card
-                    if (byte_available && (!prev_byte_available)) begin
-                        if (special_SD_address == 0) begin // first address byte
-                            index_to_write_next_sector <= {24'b0, dout};
-                        end else if (special_SD_address == 1) begin // second address byte
-                            index_to_write_next_sector <= {16'b0, dout, index_to_write_next_sector[7:0]};
-                            rd <= 0;
-                        end
-                        special_SD_address <= special_SD_address + 1; 
-                    end
-                    if ((special_SD_address+1) % SECTOR_SIZE = 0) begin // discard the next 510 bytes (junk)
-                        state <= SLIDE_SHOW_NEW_SECTOR;
-                        sd_addr <= 0; ///////ATTENTION
-                        special_SD_address <= 0;
                     end
                 end
                 SLIDE_SHOW_SECTOR: begin // read only a single image initially, eventually allow actual slide show
@@ -319,7 +267,7 @@ module frame_buffer(
                     end
                 end
                 SLIDE_SHOW_NEW_SECTOR: begin
-                    if (sd_buffer_index == IMAGE_SIZE) begin // read next image, could be a modulus operator instead?
+                    if (sd_buffer_index == IMAGE_SIZE) begin // read next image 
                         state <= SLIDE_SHOW_NEXT_IMAGE;
                         sd_buffer_index <= 0;
                     end else begin
@@ -333,18 +281,16 @@ module frame_buffer(
                 end
                 SLIDE_SHOW_NEXT_IMAGE: begin
                     // Eventually should pause after every image (for a few seconds), should resume from the last read index in memory
-                    
-                    if (draw) begin // will draw on top of this image
+                    if (draw) begin
                         state <= DRAWING;
                         sd_buffer_index <= 0;
                     end else if (!slide_show) begin
                         state <= IDLE;
                         sd_buffer_index <= 0;
                     end else begin // read from the SD card to the buffer
-                        if (cycle_count >= 1 << 27) begin  
+                        if (cycle_count >= 1 << 26) begin //play around with this number
                             cycle_count <= 0;
-                            // if (sd_buffer_index == index_to_write_next_sector) begin // ATTENTION
-                            if (sd_addr == index_to_write_next_sector) begin 
+                            if ((sd_buffer_index == index_to_write_next_sector)) begin
                                 state <= IDLE;
                                 sd_buffer_index <= 0;
                             end else begin
@@ -360,31 +306,6 @@ module frame_buffer(
                         end
                     end
                 end
-                START_SEC_ADDR_WRITE: begin // update the address of the last written image in the SD card
-                    if (ready) begin 
-                        wr <= 1;
-                        state <= OVERWRITE_ADDR;
-                        special_SD_address <= 0;
-                        sd_addr <= 0;
-                    end
-                end
-                OVERWRITE_ADDR: begin // this writes index_to_write_next_sector to SD, should be very similar to SAVING_SECTOR, HERE TO FINISH
-                    wr <= 0;
-                    if (ready_for_next_byte && (!prev_ready_for_next_byte)) begin // rising edge of ready_for_next_byte
-                        if (special_SD_address == 0) begin
-                            din <= index_to_write_next_sector[7:0];
-                        end else if (special_SD_address == 1) begin
-                            din <= index_to_write_next_sector[15:8];
-                        end else begin
-                            din <= 0;
-                        end
-                        special_SD_address <= special_SD_address + 1;
-                    end 
-                    if (special_SD_address >= SECTOR_SIZE) begin
-                        special_SD_address <= 0;
-                        state <= IDLE;
-                    end
-                end
                 DRAWING: begin
                     if (!draw) begin // finished drawing, save image  card
                         state <= FINISHED_SAVING_SECTOR;
@@ -392,6 +313,7 @@ module frame_buffer(
                         sd_addr <= index_to_write_next_sector; // set index to be after the previous write index
                     end 
                 end
+                
                 SAVING_SECTOR: begin
                     // write all contents of the buffer as a new image in the SD card
                     wr <= 0;
@@ -412,7 +334,7 @@ module frame_buffer(
                 end
                 FINISHED_SAVING_SECTOR: begin
                     if (sd_buffer_index == IMAGE_SIZE) begin
-                        state <= START_SEC_ADDR_WRITE;
+                        state <= IDLE;
                         index_to_write_next_sector <= sd_addr; // save this index for future writes
                         sd_buffer_index = 0;
                         wr <= 0;

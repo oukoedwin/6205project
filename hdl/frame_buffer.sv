@@ -53,7 +53,7 @@ module frame_buffer(
 
     assign addr = hcount_in + 640*vcount_in;
 
-    logic to_idle;
+    logic prev_slide_show;
     logic [$clog2(360*640)-1:0] sd_buffer_index; // current index in the buffer that is being read from or written to from the SD card
     logic [10:0] special_SD_address;
     logic [31:0] index_to_write_next_sector; // index in SD card where the next byte should be written to
@@ -257,18 +257,19 @@ module frame_buffer(
             index_to_write_next_sector <= 512;
             prev_byte_available <= 0;
             prev_ready_for_next_byte <= 0;
+            prev_slide_show <= 0;
             write_inc <= 0;
             cycle_count <= 0;
             special_SD_address <= 0;
-            to_idle <= 0;
         end else begin
             prev_byte_available <= byte_available;
             prev_ready_for_next_byte <= ready_for_next_byte;
+            prev_slide_show <= slide_show;
             case (state)
                 IDLE: begin
                     sd_buffer_index <= 0;
                     sd_addr <= 0; 
-                    if (slide_show) begin
+                    if (slide_show && (prev_slide_show == 0)) begin
                         state <= START_SEC_ADDR_READ;
                     end else if (draw) begin // draw only writes to the buffer, no action on this side
                         state <= DRAWING;
@@ -287,14 +288,17 @@ module frame_buffer(
                     end
                 end
                 READ_ADDR: begin // read the location/address of the image last written to the SD card
-                    // read the first two bytes in the SD card
+                    // read the first 4 bytes in the SD card
                     if (byte_available && (!prev_byte_available)) begin
-                        if (special_SD_address == 0) begin // first address byte
-                            index_to_write_next_sector <= {24'b0, dout};
-                        end else if (special_SD_address == 1) begin // second address byte
-                            index_to_write_next_sector <= {16'b0, dout, index_to_write_next_sector[7:0]};
-                            rd <= 0;
-                        end
+                        case (special_SD_address)
+                            0: index_to_write_next_sector <= {24'b0, dout};
+                            1: index_to_write_next_sector <= {16'b0, dout, index_to_write_next_sector[7:0]};
+                            2: index_to_write_next_sector <= {8'b0, dout, index_to_write_next_sector[15:0]};
+                            3: begin
+                                index_to_write_next_sector <= {dout, index_to_write_next_sector[23:0]};
+                                rd <= 0;
+                            end
+                        endcase
                         special_SD_address <= special_SD_address + 1; 
                     end
                     if ((special_SD_address+1) % SECTOR_SIZE == 0) begin // discard the next 510 bytes (junk)
@@ -336,7 +340,6 @@ module frame_buffer(
                     end
                 end
                 SLIDE_SHOW_NEXT_IMAGE: begin
-                    // Eventually should pause after every image (for a few seconds), should resume from the last read index in memory
                     //sd_buffer_index <= 0;
                     if (draw) begin // will draw on top of this image
                         state <= DRAWING;
@@ -348,9 +351,10 @@ module frame_buffer(
                         if (cycle_count >= 1 << 27) begin  
                             cycle_count <= 0;
                             sd_buffer_index <= 0; // newest change
-                            if (sd_buffer_index == index_to_write_next_sector) begin // ATTENTION
-                            //if (sd_addr == index_to_write_next_sector) begin 
+                            //if (sd_buffer_index == index_to_write_next_sector) begin // ATTENTION
+                            if (sd_addr >= index_to_write_next_sector) begin 
                                 state <= IDLE;
+                                sd_addr <= 512;
                             end else begin
                                 if (ready) begin
                                     rd <= 1;
@@ -375,13 +379,14 @@ module frame_buffer(
                 OVERWRITE_ADDR: begin // this writes index_to_write_next_sector to SD, should be very similar to SAVING_SECTOR, HERE TO FINISH
                     wr <= 0;
                     if (ready_for_next_byte && (!prev_ready_for_next_byte)) begin // rising edge of ready_for_next_byte
-                        if (special_SD_address == 0) begin
-                            din <= index_to_write_next_sector[7:0];
-                        end else if (special_SD_address == 1) begin
-                            din <= index_to_write_next_sector[15:8];
-                        end else begin
-                            din <= 0;
-                        end
+                        case (special_SD_address)
+                            0: din <= index_to_write_next_sector[7:0];
+                            1: din <= index_to_write_next_sector[15:8];
+                            2: din <= index_to_write_next_sector[23:16];
+                            3: din <= index_to_write_next_sector[31:24];
+                            default: din <= 0;
+                        endcase
+                            
                         special_SD_address <= special_SD_address + 1;
                     end 
                     if (special_SD_address >= SECTOR_SIZE) begin

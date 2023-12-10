@@ -16,7 +16,7 @@ module top_level(
   output logic [3:0] ss0_an,
   output logic [3:0] ss1_an,
   output logic [7:0] pmoda,
-  input wire [1:0] pmodb,
+  input wire [7:0] pmodb,
   output logic SD_CMD,
   output logic SD_CLK,
   input wire SD_CD_N,
@@ -30,8 +30,11 @@ module top_level(
   // assign led = sw;
 
   // Shh those rgb LEDs (active high)
-  assign rgb1= 0;
-  assign rgb0 = 0;
+  assign rgb1[1:0]= 0;
+  assign rgb0[1:0] = 0;
+
+  assign rgb1[2] = ~pmodb[4];
+  assign rgb0[2] = ~pmodb[5];
 
   // System Reset
   logic sys_rst;
@@ -108,13 +111,52 @@ module top_level(
   logic [2:0] stroke_width;
 
 
+  //debounce rotary encoders
 
-  user_input user_input (
+  logic rot_a1, rot_b1, rot_a2, rot_b2;
+
+  debouncer #(.CLK_PERIOD_NS(10),
+              .DEBOUNCE_TIME_MS(2)) 
+              rot_a1_db(.clk_in(clk_pixel),
+                  .rst_in(sys_rst),
+                  .dirty_in(pmodb[3]),
+                  .clean_out(rot_a1));
+
+  debouncer #(.CLK_PERIOD_NS(10),
+              .DEBOUNCE_TIME_MS(2))
+              rot_b1_db(.clk_in(clk_pixel),
+                  .rst_in(sys_rst),
+                  .dirty_in(pmodb[2]),
+                  .clean_out(rot_b1));
+
+  debouncer #(.CLK_PERIOD_NS(10),
+              .DEBOUNCE_TIME_MS(2)) 
+              rot_a2_db(.clk_in(clk_pixel),
+                  .rst_in(sys_rst),
+                  .dirty_in(pmodb[7]),
+                  .clean_out(rot_a2));
+
+  debouncer #(.CLK_PERIOD_NS(10),
+              .DEBOUNCE_TIME_MS(2))
+              rot_b2_db(.clk_in(clk_pixel),
+                  .rst_in(sys_rst),
+                  .dirty_in(pmodb[6]),
+                  .clean_out(rot_b2));
+
+
+  
+  user_input2 user_input (
     .clk_in(clk_pixel),
     .rst_in(sys_rst),
     .pos_con_in(pos_control),
     .col_con_in(col_control),
     .sw_con_in(sw_control),
+    .rot_a1_in(rot_a1),
+    .rot_b1_in(rot_b1),
+    .rot_a2_in(rot_a2),
+    .rot_b2_in(rot_b2),
+    .rot_but1(pmodb[5]),
+    .rot_but2(pmodb[4]),
     .nf_in(new_frame),
     .cursor_loc_x(cursor_loc_x),
     .cursor_loc_y(cursor_loc_y),
@@ -122,7 +164,7 @@ module top_level(
     .stroke_width(stroke_width)
   );
 
-  //gui_sprite output:
+  //gui_sprite output
   logic [7:0] gui_red, gui_green, gui_blue;
   logic in_sprite;
 
@@ -169,6 +211,9 @@ module top_level(
     .sd_cmd(SD_CMD),
     .led(led)
   );
+
+
+  //combinational logic to combine all parts
 
   logic [7:0] final_red, final_green, final_blue;
 

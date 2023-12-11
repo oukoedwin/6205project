@@ -244,7 +244,7 @@ module frame_buffer(
 
     always_ff @(posedge clk_25mhz) begin
         if (rst_in) begin //overwrites everything in permanent memory as well
-            state <= IDLE;
+            state <= START_SEC_ADDR_READ;
             mem_to_buffer_wr <= 0;
             sd_buffer_index <= 0;
             index_to_write_next_sector <= 512;
@@ -260,15 +260,13 @@ module frame_buffer(
             prev_slide_show <= slide_show;
             case (state)
                 IDLE: begin
-                    sd_buffer_index <= 0;
-                    sd_addr <= 0;
                     if (slide_show && (prev_slide_show == 0)) begin
                         state <= START_SEC_ADDR_READ;
                     end else if (draw) begin // draw only writes to the buffer, no action on this side
                         state <= DRAWING;
                         mem_to_buffer_wr <= 0;
                     end else if (reset_SD_card) begin // erases all memory previously to the SD card (lazily)
-                        index_to_write_next_sector <= 0; 
+                        index_to_write_next_sector <= 512; 
                         state <= START_SEC_ADDR_WRITE;
                     end
                 end
@@ -294,9 +292,9 @@ module frame_buffer(
                         endcase
                         special_SD_address <= special_SD_address + 1; 
                     end
-                    if ((special_SD_address+1) % SECTOR_SIZE == 0) begin // discard the next 510 bytes (junk)
-                        state <= SLIDE_SHOW_NEW_SECTOR;
-                        sd_addr <= 512; // ATTENTION
+                    if (special_SD_address+1 >= SECTOR_SIZE) begin // discard the next 510 bytes (junk)
+                        state <= slide_show ? SLIDE_SHOW_NEW_SECTOR : IDLE ;
+                        sd_addr <= 512;
                         sd_buffer_index <= 0;
                         special_SD_address <= 0;
                     end
@@ -321,7 +319,7 @@ module frame_buffer(
                     end
                 end
                 SLIDE_SHOW_NEW_SECTOR: begin
-                    if (sd_buffer_index == IMAGE_SIZE) begin // read next image, could be a modulus operator instead?
+                    if (sd_buffer_index == IMAGE_SIZE) begin // read next image
                         state <= SLIDE_SHOW_NEXT_IMAGE;
                         sd_buffer_index <= 0;
                     end else begin
@@ -337,15 +335,15 @@ module frame_buffer(
                     sd_buffer_index <= 0;
                     if (draw) begin // will draw on top of this image
                         state <= DRAWING;
-                    end else if (!slide_show) begin
+                    end else if (!slide_show) begin // slide show stopped
                         state <= IDLE;
                     end else begin // read from the SD card to the buffer  
                         if (cycle_count >= (1 << 26)) begin  
                             cycle_count <= 0;
-                            if (sd_addr >= index_to_write_next_sector) begin 
+                            if (sd_addr >= index_to_write_next_sector) begin // all images shown
                                 state <= IDLE;
                             end else begin
-                                if (ready) begin
+                                if (ready) begin // show the next image
                                     rd <= 1;
                                     write_inc <= 0;
                                     mem_to_buffer_wr <= 1; // enable SD card module to write to buffer
@@ -373,14 +371,22 @@ module frame_buffer(
                             1: din <= index_to_write_next_sector[15:8];
                             2: din <= index_to_write_next_sector[23:16];
                             3: din <= index_to_write_next_sector[31:24];
-                            default: din <= 0;
+                            default:  begin
+                                din <= 0;
+                                sd_addr <= index_to_write_next_sector;
+                            end
                         endcase
-                        special_SD_address <= special_SD_address + 1;
+                        if (special_SD_address+1 >= SECTOR_SIZE) begin
+                            special_SD_address <= 0;
+                            state <= IDLE;
+                        end else begin
+                            special_SD_address <= special_SD_address + 1;
+                        end
                     end 
-                    if (special_SD_address+1 >= SECTOR_SIZE) begin
-                        special_SD_address <= 0;
-                        state <= IDLE;
-                    end
+                    // if (special_SD_address+1 >= SECTOR_SIZE) begin
+                    //     special_SD_address <= 0;
+                    //     state <= IDLE;
+                    // end
                 end
                 DRAWING: begin
                     if (!draw) begin // finished drawing, save image  card

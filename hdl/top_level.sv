@@ -27,7 +27,13 @@ module top_level(
   );
 
   // Connect switches to LED bank for debugging
-  assign led = sw;
+  // assign led = sw;
+
+// ** SUGGESTIONS
+// - have the colors wrap around (overflow)
+// - have the cursor width wrap around
+// - store width information as well
+
   // Shh those rgb LEDs (active high)
   assign rgb1[1:0]= 0;
   assign rgb0[1:0] = 0;
@@ -40,9 +46,10 @@ module top_level(
   assign sys_rst = btn[0];
 
   // signals for working with SD card
-  logic draw, slide_show, sd_reset;
+  logic draw, slide_show, sd_reset, reset_SD_card;
   assign draw = sw[2];
   assign slide_show = sw[3];
+  assign reset_SD_card = sw[4];
 
   // Clock Buffer
   logic buffered_clk_100mhz;
@@ -222,12 +229,16 @@ module top_level(
     .blue_out(fb_blue),
     .slide_show(slide_show),
     .draw(draw),
+    .reset_SD_card(reset_SD_card),
     .clk_100mhz(clk_100mhz),
     .sd_cd(SD_CD_N), 
     .sd_dat({SD_DQ3, SD_DQ2, SD_DQ1, SD_DQ0}),
     .sd_reset(sd_reset), 
     .sd_sck(SD_CLK), 
-    .sd_cmd(SD_CMD) 
+    .sd_cmd(SD_CMD),
+    .manual_slide_show_enabled(sw[5]),
+    .manual_slide_show_next(btn[3]),
+    .led(led)
   );
 
 

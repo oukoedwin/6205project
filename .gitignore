@@ -6,3 +6,5 @@
 *.wdf
 *.txt
 .Xil/*
+./remote/*
+./obj/*

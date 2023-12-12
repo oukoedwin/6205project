@@ -27,14 +27,6 @@ module top_level(
   );
 
   // Connect switches to LED bank for debugging
-  // assign led = sw;
-
-// ** SUGGESTIONS
-// - have the colors wrap around (overflow)
-// - have the cursor width wrap around
-// - store width information as well (if its not complicated on Jordans end, o/w maybe too late?)
-// - use one encoder press for switching colors
-// - use the sec. emcoder color for changing stroke width
 
 // ** USAGE INSTRUCTIONS (with switches and buttons)
 // - sw[0], sw[1], sw[14], sw[15]: moves cursor up, down, right, left
@@ -112,7 +104,6 @@ module top_level(
     .valid_addr_out(valid_addr_scaled)
   );
 
-  
 
   logic [3:0] pos_control;
   logic col_control;

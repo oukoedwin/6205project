@@ -31,18 +31,6 @@ module frame_buffer(
     // * sw4: erases the contents of the SD card
     // * btn3: activates manual slide show
 
-    // UPDATES
-    // - support permanent storage
-    // - use the signal reset_SD_card to reset this address back to zero
-
-    // BUGS TO FIX
-    // - drawing behind on-display menu
-    // - white screen bug (high priority)
-
-    // Remaining work
-    // - optimizing storage (8 bytes to store data corresponding to two locations)
-    // - allow slide show using buttons
-
     logic [3:0] doutb;
 
     logic [$clog2(360*640)-1:0] input_addra;
@@ -147,8 +135,6 @@ module frame_buffer(
     );
 
     assign led[4:0] = state;
-    assign led[7:5] = 3'b0;
-    assign led[15:8] = sd_addr;
     always_comb begin
         if (state == DRAWING) begin
             input_addra = addr;
@@ -409,10 +395,6 @@ module frame_buffer(
                             special_SD_address <= special_SD_address + 1;
                         end
                     end 
-                    // if (special_SD_address+1 >= SECTOR_SIZE) begin
-                    //     special_SD_address <= 0;
-                    //     state <= IDLE;
-                    // end
                 end
                 DRAWING: begin
                     if (!draw) begin // finished drawing, save image  card

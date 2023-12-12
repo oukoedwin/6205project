@@ -32,7 +32,18 @@ module top_level(
 // ** SUGGESTIONS
 // - have the colors wrap around (overflow)
 // - have the cursor width wrap around
-// - store width information as well
+// - store width information as well (if its not complicated on Jordans end, o/w maybe too late?)
+// - use one encoder press for switching colors
+// - use the sec. emcoder color for changing stroke width
+
+// ** USAGE INSTRUCTIONS (with switches and buttons)
+// - sw[0], sw[1], sw[14], sw[15]: moves cursor up, down, right, left
+// - sw[2]: activates drawing
+// - sw[3]: auto slide show
+// - sw[4]: reset SD card (erase contents)
+// - sw[5]: enable manual slide show (show next image using btn[3] ->  could be changed to presses of the encoder)
+
+
 
   // Shh those rgb LEDs (active high)
   assign rgb1[1:0]= 0;

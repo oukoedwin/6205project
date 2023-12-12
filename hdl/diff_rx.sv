@@ -5,6 +5,7 @@ module diff_rx
     ( input wire clk_in,
       input wire rst_in,
       input wire data_in,
+      output logic [2:0] state_out,
       output logic [25:0] code_out,
       output logic new_code_out );
 
@@ -14,6 +15,7 @@ module diff_rx
     logic [4:0] data_buffer_index;
     typedef enum {IDLE = 0, SL = 1, SH = 2, DL = 3, DH0 = 4, DH1 = 5, DONE = 6} rx_state;
     rx_state state;
+    assign state_out = state;
 
     always_ff @(posedge clk_in) begin
         if (rst_in) begin
@@ -159,4 +161,4 @@ module diff_rx
     end
 
 endmodule
-`default_nettype wire
+`default_nettype none

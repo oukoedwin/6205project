@@ -15,7 +15,7 @@ module top_level(
   output logic [6:0] ss1_c,
   output logic [3:0] ss0_an,
   output logic [3:0] ss1_an,
-  output logic [7:0] pmoda,
+  inout wire [1:0] pmoda,
   input wire [7:0] pmodb,
   output logic SD_CMD,
   output logic SD_CLK,
@@ -294,34 +294,35 @@ module top_level(
   OBUFDS OBUFDS_clock(.I(clk_pixel), .O(hdmi_clk_p), .OB(hdmi_clk_n));
 
   // COMMUNICATION MODULE
-  logic diff_data_out, diff_data_in, diff_in_sync, new_code_out;
+  logic diff_data_out, diff_data_in, diff_in_sync, new_code_out, io_sel;
   logic [25:0] code_out;
+  // Have the line float high by default.
+  PULLUP pullup_p (.O(pmoda[0]));
+  PULLDOWN pulldown_n (.O(pmoda[1]));
   // Transmit the cursor location on every new frame.
-  diff_tx dtx (
+  IOBUFDS diff_io_buf (
+    .IO(pmoda[0]),
+    .IOB(pmoda[1]),
+    .O(diff_data_in),
+    .I(diff_data_out),
+    .T(!io_sel)
+  );
+  diff_io diff_io (
       .clk_in(buffered_clk_100mhz),
       .rst_in(sys_rst),
       .trigger_in(new_frame),
       .data_in({cursor_loc_x, cursor_loc_y, cursor_color, stroke_width}),
-      .data_out(diff_data_out)
+      .diff_data_in(diff_in_sync),
+      .diff_data_out(diff_data_out),
+      .io_sel(io_sel),
+      .new_code_out(new_code_out),
+      .code_out(code_out)
   );
-  always_comb begin
-    pmoda[0] = diff_data_out;
-    pmoda[4] = !diff_data_out;
-  end
-  // Receive the cursor location from the other FPGA.
-  IBUFDS drx_i (.I(pmodb[0]), .IB(pmodb[1]), .O(diff_data_in));
   synchronizer s_rx (
       .clk_in(buffered_clk_100mhz),
       .rst_in(sys_rst),
       .us_in(diff_data_in),
       .s_out(diff_in_sync)
-  );
-  diff_rx drx (
-      .clk_in(buffered_clk_100mhz),
-      .rst_in(sys_rst),
-      .data_in(diff_in_sync),
-      .code_out(code_out),
-      .new_code_out(new_code_out)
   );
   logic [9:0] comm_x_loc;
   logic [8:0] comm_y_loc;

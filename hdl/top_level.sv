@@ -27,7 +27,13 @@ module top_level(
   );
 
   // Connect switches to LED bank for debugging
-  assign led = sw;
+  // assign led = sw;
+
+// ** SUGGESTIONS
+// - have the colors wrap around (overflow)
+// - have the cursor width wrap around
+// - store width information as well
+
   // Shh those rgb LEDs (active high)
   assign rgb1[1:0]= 0;
   assign rgb0[1:0] = 0;
@@ -40,9 +46,10 @@ module top_level(
   assign sys_rst = btn[0];
 
   // signals for working with SD card
-  logic draw, slide_show, sd_reset;
+  logic draw, slide_show, sd_reset, reset_SD_card;
   assign draw = sw[2];
   assign slide_show = sw[3];
+  assign reset_SD_card = sw[4];
 
   // Clock Buffer
   logic buffered_clk_100mhz;
@@ -86,7 +93,7 @@ module top_level(
       .nf_out(new_frame),
       .fc_out(frame_count));
 
-    scale(
+  scale(
     .hcount_in(hcount),
     .vcount_in(vcount),
     .scaled_hcount_out(hcount_scaled),
@@ -99,9 +106,11 @@ module top_level(
   logic [3:0] pos_control;
   logic col_control;
   logic sw_control;
+  logic cursor_type;
   assign pos_control = {sw[15:14],sw[1:0]};
   assign col_control = btn[1];
   assign sw_control = btn[2];
+  assign cursor_type = sw[13];
 
   logic [9:0] cursor_loc_x;
   logic [8:0] cursor_loc_y;
@@ -179,6 +188,26 @@ module top_level(
     .in_sprite(in_sprite)
   );
 
+  //cursor_sprite output
+  logic [7:0] c_red, c_green, c_blue;
+  logic in_cursor;
+
+  cursor cursor_sprite (
+    .clk_in(clk_pixel),
+    .rst_in(sys_rst),
+    .cursor_color(cursor_color),
+    .stroke_width(stroke_width),
+    .x_in(cursor_loc_x),
+    .y_in(cursor_loc_y),
+    .cursor_type(cursor_type),
+    .hcount_in(hcount),
+    .vcount_in(vcount),
+    .red_out(c_red),
+    .green_out(c_green),
+    .blue_out(c_blue),
+    .in_sprite(in_cursor)
+  );
+
   logic [7:0] fb_red, fb_green, fb_blue;
 
   frame_buffer canvas (
@@ -200,13 +229,18 @@ module top_level(
     .blue_out(fb_blue),
     .slide_show(slide_show),
     .draw(draw),
+    .reset_SD_card(reset_SD_card),
     .clk_100mhz(clk_100mhz),
     .sd_cd(SD_CD_N), 
     .sd_dat({SD_DQ3, SD_DQ2, SD_DQ1, SD_DQ0}),
     .sd_reset(sd_reset), 
     .sd_sck(SD_CLK), 
-    .sd_cmd(SD_CMD) 
+    .sd_cmd(SD_CMD),
+    .manual_slide_show_enabled(sw[5]),
+    .manual_slide_show_next(btn[3]),
+    .led(led)
   );
+
 
 
   //combinational logic to combine all parts
@@ -214,14 +248,18 @@ module top_level(
   logic [7:0] final_red, final_green, final_blue;
 
   always_comb begin
-    if (in_sprite) begin 
+    if (~cursor_type && in_cursor) begin
+        final_red = c_red;
+        final_blue = c_blue; 
+        final_green = c_green;
+    end else if (in_sprite) begin 
         final_red = gui_red;
         final_blue = gui_blue;
         final_green = gui_green;
-    end else if (hcount_scaled == cursor_loc_x || vcount_scaled == cursor_loc_y) begin 
-        final_red = 8'h00;
-        final_blue = 8'hFF;
-        final_green = 8'h80;
+    end else if (in_cursor) begin 
+        final_red = c_red;
+        final_blue = c_blue;
+        final_green = c_green;
     end else begin 
         final_red = fb_red;
         final_blue = fb_blue;

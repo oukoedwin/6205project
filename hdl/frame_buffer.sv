@@ -123,26 +123,7 @@ module frame_buffer(
     assign in_brush2 = ((radius2*radius2) >= 
                         (h_min_x2 + v_min_y2));
 
-    /*
-    logic in_brush;
-    assign in_brush = ((radius*radius) >= 
-                        ((hcount_in - x_in)*(hcount_in - x_in) + 
-                         (vcount_in-y_in)*(vcount_in-y_in)));
-    */
     
-    /*
-    always_comb begin 
-
-    end
-
-    always_ff @(posedge clk_in)begin 
-        if (rst_in) begin
-
-        end else begin 
-            
-        end
-    end
-    */
 
     //  Xilinx True Dual Port RAM, Read First, Dual Clock
     xilinx_true_dual_port_read_first_2_clock_ram #(
@@ -239,18 +220,6 @@ module frame_buffer(
         endcase
     end
     
-    /*
-    always_comb begin 
-        if (doutb == 4'b0001) begin 
-            red_out = 8'hFF;
-            green_out = 8'hFF;
-            blue_out = 8'hFF;
-        end else begin 
-            red_out = 8'h00;
-            green_out = 8'h00;
-            blue_out = 8'h00;
-        end
-    end */
 
     always_ff @(posedge clk_25mhz) begin
         if (rst_in) begin //overwrites everything in permanent memory as well
@@ -313,7 +282,6 @@ module frame_buffer(
                 end
                 SLIDE_SHOW_SECTOR: begin // read only a single image initially, eventually allow actual slide show
                     if (byte_available && (!prev_byte_available) && (write_inc == 0)) begin
-                        // setting memout_bin and incrementing sd_buffer_index in different cycles to write to the old index (before the incrementing)
                         memout_bin <= dout;
                         write_inc <= 1;
                     end else begin
@@ -364,7 +332,7 @@ module frame_buffer(
                                 end
                             end
                         end else begin
-                            if (cycle_count >= (1 << 26)) begin  
+                            if (cycle_count >= (1 << 25)) begin  
                                 cycle_count <= 0;
                                 if (sd_addr >= index_to_write_next_sector) begin // all images shown
                                     state <= IDLE;

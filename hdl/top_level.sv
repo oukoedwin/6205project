@@ -15,7 +15,7 @@ module top_level(
   output logic [6:0] ss1_c,
   output logic [3:0] ss0_an,
   output logic [3:0] ss1_an,
-  output logic [7:0] pmoda,
+  inout wire [1:0] pmoda,
   input wire [7:0] pmodb,
   output logic SD_CMD,
   output logic SD_CLK,
@@ -104,7 +104,7 @@ module top_level(
       .nf_out(new_frame),
       .fc_out(frame_count));
 
-    scale(
+  scale(
     .hcount_in(hcount),
     .vcount_in(vcount),
     .scaled_hcount_out(hcount_scaled),
@@ -117,9 +117,11 @@ module top_level(
   logic [3:0] pos_control;
   logic col_control;
   logic sw_control;
+  logic cursor_type;
   assign pos_control = {sw[15:14],sw[1:0]};
   assign col_control = btn[1];
   assign sw_control = btn[2];
+  assign cursor_type = sw[13];
 
   logic [9:0] cursor_loc_x;
   logic [8:0] cursor_loc_y;
@@ -197,6 +199,26 @@ module top_level(
     .in_sprite(in_sprite)
   );
 
+  //cursor_sprite output
+  logic [7:0] c_red, c_green, c_blue;
+  logic in_cursor;
+
+  cursor cursor_sprite (
+    .clk_in(clk_pixel),
+    .rst_in(sys_rst),
+    .cursor_color(cursor_color),
+    .stroke_width(stroke_width),
+    .x_in(cursor_loc_x),
+    .y_in(cursor_loc_y),
+    .cursor_type(cursor_type),
+    .hcount_in(hcount),
+    .vcount_in(vcount),
+    .red_out(c_red),
+    .green_out(c_green),
+    .blue_out(c_blue),
+    .in_sprite(in_cursor)
+  );
+
   logic [7:0] fb_red, fb_green, fb_blue;
 
   frame_buffer canvas (
@@ -231,19 +253,24 @@ module top_level(
   );
 
 
+
   //combinational logic to combine all parts
 
   logic [7:0] final_red, final_green, final_blue;
 
   always_comb begin
-    if (in_sprite) begin 
+    if (~cursor_type && in_cursor) begin
+        final_red = c_red;
+        final_blue = c_blue; 
+        final_green = c_green;
+    end else if (in_sprite) begin 
         final_red = gui_red;
         final_blue = gui_blue;
         final_green = gui_green;
-    end else if (hcount_scaled == cursor_loc_x || vcount_scaled == cursor_loc_y) begin 
-        final_red = 8'h00;
-        final_blue = 8'hFF;
-        final_green = 8'h80;
+    end else if (in_cursor) begin 
+        final_red = c_red;
+        final_blue = c_blue;
+        final_green = c_green;
     end else begin 
         final_red = fb_red;
         final_blue = fb_blue;
@@ -316,34 +343,35 @@ module top_level(
   OBUFDS OBUFDS_clock(.I(clk_pixel), .O(hdmi_clk_p), .OB(hdmi_clk_n));
 
   // COMMUNICATION MODULE
-  logic diff_data_out, diff_data_in, diff_in_sync, new_code_out;
+  logic diff_data_out, diff_data_in, diff_in_sync, new_code_out, io_sel;
   logic [25:0] code_out;
+  // Have the line float high by default.
+  PULLUP pullup_p (.O(pmoda[0]));
+  PULLDOWN pulldown_n (.O(pmoda[1]));
   // Transmit the cursor location on every new frame.
-  diff_tx dtx (
+  IOBUFDS diff_io_buf (
+    .IO(pmoda[0]),
+    .IOB(pmoda[1]),
+    .O(diff_data_in),
+    .I(diff_data_out),
+    .T(!io_sel)
+  );
+  diff_io diff_io (
       .clk_in(buffered_clk_100mhz),
       .rst_in(sys_rst),
       .trigger_in(new_frame),
       .data_in({cursor_loc_x, cursor_loc_y, cursor_color, stroke_width}),
-      .data_out(diff_data_out)
+      .diff_data_in(diff_in_sync),
+      .diff_data_out(diff_data_out),
+      .io_sel(io_sel),
+      .new_code_out(new_code_out),
+      .code_out(code_out)
   );
-  always_comb begin
-    pmoda[0] = diff_data_out;
-    pmoda[4] = !diff_data_out;
-  end
-  // Receive the cursor location from the other FPGA.
-  IBUFDS drx_i (.I(pmodb[0]), .IB(pmodb[1]), .O(diff_data_in));
   synchronizer s_rx (
       .clk_in(buffered_clk_100mhz),
       .rst_in(sys_rst),
       .us_in(diff_data_in),
       .s_out(diff_in_sync)
-  );
-  diff_rx drx (
-      .clk_in(buffered_clk_100mhz),
-      .rst_in(sys_rst),
-      .data_in(diff_in_sync),
-      .code_out(code_out),
-      .new_code_out(new_code_out)
   );
   logic [9:0] comm_x_loc;
   logic [8:0] comm_y_loc;

@@ -6,6 +6,7 @@ module diff_tx
       input wire rst_in,
       input wire trigger_in,
       input wire [25:0] data_in,
+      output logic [1:0] state_out,
       output logic data_out );
 
     // Module variables
@@ -14,6 +15,7 @@ module diff_tx
     logic [4:0] data_index;
     typedef enum {IDLE = 0, SYNC = 1, ZERO = 2, ONE = 3} tx_state;
     tx_state state;
+    assign state_out = state;
     
     always_ff @(posedge clk_in) begin
         // Transition back to IDLE on system reset
@@ -30,25 +32,23 @@ module diff_tx
                     if (counter < HALF_DATA_PERIOD) begin
                         data_out <= 1'b0;
                         counter <= counter + 1;
-                    // Once the end is reached, determine whether we're at the start or end of the message
+                    // Once the end of the sync is reached, start sending the message.
                     end else if (counter >= DATA_PERIOD) begin
-                        // If we're at the end, raise the line and head back to IDLE.
-                        if (data_index == 5'd31) begin
-                            state <= IDLE;
-                            data_out <= 1'b1;
-                            counter <= 0;
-                            data_index <= 5'd25;
-                        // If we're at the start, lower the line and send the first bit (MSB).
-                        end else begin
-                            data_out <= 1'b0;
-                            counter <= 1;
-                            state <= current_data[25] ? ONE : ZERO;
-                            data_index <= 5'd24;
-                        end
-                    // Hold high on the second half
+                        data_out <= 1'b0;
+                        counter <= 1;
+                        state <= current_data[25] ? ONE : ZERO;
+                        data_index <= 5'd24;
+                    // If we're at the end, raise the line and head back to IDLE.
+                    // Otherwise, hold high on the second half
                     end else begin
                         data_out <= 1'b1;
-                        counter <= counter + 1;
+                        if (data_index == 5'd31) begin
+                            state <= IDLE;
+                            counter <= 0;
+                            data_index <= 5'd25;
+                        end else begin
+                            counter <= counter + 1;
+                        end
                     end
                 end
                 // Zero Bit - Duty cycle of 75%
@@ -117,4 +117,4 @@ module diff_tx
     end
 
 endmodule
-`default_nettype wire
+`default_nettype none

@@ -66,12 +66,8 @@ module frame_buffer(
                      .rd(rd), .dout(dout), .byte_available(byte_available),
                      .wr(wr), .din(din), .ready_for_next_byte(ready_for_next_byte)); 
 
-    /*
-    logic in_brush;
-    assign in_brush = (hcount_in == x_in) && (vcount_in == y_in);
-    */
-
     
+    //Logic to check if current hcount vcount is within the brush
     logic signed [9:0] radius1;
     assign radius1 = {1'b0,(sw_in1+1)*2-1};
 
@@ -96,26 +92,6 @@ module frame_buffer(
     assign in_brush2 = ((radius2*radius2) >= 
                         (h_min_x2 + v_min_y2));
 
-    /*
-    logic in_brush;
-    assign in_brush = ((radius*radius) >= 
-                        ((hcount_in - x_in)*(hcount_in - x_in) + 
-                         (vcount_in-y_in)*(vcount_in-y_in)));
-    */
-    
-    /*
-    always_comb begin 
-
-    end
-
-    always_ff @(posedge clk_in)begin 
-        if (rst_in) begin
-
-        end else begin 
-            
-        end
-    end
-    */
 
     //  Xilinx True Dual Port RAM, Read First, Dual Clock
     xilinx_true_dual_port_read_first_2_clock_ram #(
@@ -201,6 +177,41 @@ module frame_buffer(
                 red_out = 8'h80;
                 green_out = 8'h80;
                 blue_out = 8'h80;
+            end
+            4'b1001: begin //eminence
+                red_out = 8'h6C;
+                green_out = 8'h30;
+                blue_out = 8'h82;
+            end
+            4'b1010: begin //pink
+                red_out = 8'hFF;
+                green_out = 8'h00;
+                blue_out = 8'h80;
+            end
+            4'b1011: begin //orange
+                red_out = 8'hFF;
+                green_out = 8'h80;
+                blue_out = 8'h00;
+            end
+            4'b1100: begin //purple
+                red_out = 8'h80;
+                green_out = 8'h00;
+                blue_out = 8'hFF;
+            end
+            4'b1101: begin //cool blue
+                red_out = 8'h00;
+                green_out = 8'h80;
+                blue_out = 8'hFF;
+            end
+            4'b1110: begin //mint green
+                red_out = 8'h00;
+                green_out = 8'hFF;
+                blue_out = 8'h80;
+            end
+            4'b1111: begin //lime green
+                red_out = 8'h80;
+                green_out = 8'hFF;
+                blue_out = 8'h00;
             end
             default: begin //default (white)
                 red_out = 8'hFF;

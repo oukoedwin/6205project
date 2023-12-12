@@ -86,7 +86,7 @@ module top_level(
       .nf_out(new_frame),
       .fc_out(frame_count));
 
-    scale(
+  scale(
     .hcount_in(hcount),
     .vcount_in(vcount),
     .scaled_hcount_out(hcount_scaled),
@@ -99,9 +99,11 @@ module top_level(
   logic [3:0] pos_control;
   logic col_control;
   logic sw_control;
+  logic cursor_type;
   assign pos_control = {sw[15:14],sw[1:0]};
   assign col_control = btn[1];
   assign sw_control = btn[2];
+  assign cursor_type = sw[13];
 
   logic [9:0] cursor_loc_x;
   logic [8:0] cursor_loc_y;
@@ -179,6 +181,26 @@ module top_level(
     .in_sprite(in_sprite)
   );
 
+  //cursor_sprite output
+  logic [7:0] c_red, c_green, c_blue;
+  logic in_cursor;
+
+  cursor cursor_sprite (
+    .clk_in(clk_pixel),
+    .rst_in(sys_rst),
+    .cursor_color(cursor_color),
+    .stroke_width(stroke_width),
+    .x_in(cursor_loc_x),
+    .y_in(cursor_loc_y),
+    .cursor_type(cursor_type),
+    .hcount_in(hcount),
+    .vcount_in(vcount),
+    .red_out(c_red),
+    .green_out(c_green),
+    .blue_out(c_blue),
+    .in_sprite(in_cursor)
+  );
+
   logic [7:0] fb_red, fb_green, fb_blue;
 
   frame_buffer canvas (
@@ -209,19 +231,24 @@ module top_level(
   );
 
 
+
   //combinational logic to combine all parts
 
   logic [7:0] final_red, final_green, final_blue;
 
   always_comb begin
-    if (in_sprite) begin 
+    if (~cursor_type && in_cursor) begin
+        final_red = c_red;
+        final_blue = c_blue; 
+        final_green = c_green;
+    end else if (in_sprite) begin 
         final_red = gui_red;
         final_blue = gui_blue;
         final_green = gui_green;
-    end else if (hcount_scaled == cursor_loc_x || vcount_scaled == cursor_loc_y) begin 
-        final_red = 8'h00;
-        final_blue = 8'hFF;
-        final_green = 8'h80;
+    end else if (in_cursor) begin 
+        final_red = c_red;
+        final_blue = c_blue;
+        final_green = c_green;
     end else begin 
         final_red = fb_red;
         final_blue = fb_blue;

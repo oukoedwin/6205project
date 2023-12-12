@@ -21,8 +21,16 @@ module frame_buffer(
     output logic [7:0] red_out,
     output logic [7:0] green_out,
     output logic [7:0] blue_out,
+    input wire manual_slide_show_enabled,
+    input wire manual_slide_show_next,
     output logic [15:0] led
 );
+    // USAGE INSTRUCTIONS
+    // * sw2: allows you to draw (saves upon falling edge)
+    // * sw3: enables auto slide-show
+    // * sw4: erases the contents of the SD card
+    // * btn3: activates manual slide show
+
     // UPDATES
     // - support permanent storage
     // - use the signal reset_SD_card to reset this address back to zero
@@ -74,6 +82,8 @@ module frame_buffer(
     logic prev_byte_available, prev_ready_for_next_byte;
     logic clk_25mhz;
     logic write_inc;
+
+    logic prev_manual_slide_show_enabled;
 
     assign sd_dat[2:1] = 2'b11;
     sd_clock_25mhz sd_clk(.sys_rst(rst_in), .clk(clk_100mhz), .clk_25mhz(clk_25mhz));
@@ -254,13 +264,15 @@ module frame_buffer(
             write_inc <= 0;
             cycle_count <= 0;
             special_SD_address <= 0;
+            prev_manual_slide_show_enabled <= 0;
         end else begin
             prev_byte_available <= byte_available;
             prev_ready_for_next_byte <= ready_for_next_byte;
             prev_slide_show <= slide_show;
+            prev_manual_slide_show_enabled <= manual_slide_show_enabled;
             case (state)
                 IDLE: begin
-                    if (slide_show && (prev_slide_show == 0)) begin
+                    if ((slide_show & (~prev_slide_show)) | (manual_slide_show_enabled & (~prev_manual_slide_show_enabled))) begin
                         state <= START_SEC_ADDR_READ;
                     end else if (draw) begin // draw only writes to the buffer, no action on this side
                         state <= DRAWING;
@@ -293,7 +305,7 @@ module frame_buffer(
                         special_SD_address <= special_SD_address + 1; 
                     end
                     if (special_SD_address+1 >= SECTOR_SIZE) begin // discard the next 510 bytes (junk)
-                        state <= slide_show ? SLIDE_SHOW_NEW_SECTOR : IDLE ;
+                        state <= (slide_show | manual_slide_show_enabled) ? SLIDE_SHOW_NEW_SECTOR : IDLE;
                         sd_addr <= 512;
                         sd_buffer_index <= 0;
                         special_SD_address <= 0;
@@ -335,23 +347,38 @@ module frame_buffer(
                     sd_buffer_index <= 0;
                     if (draw) begin // will draw on top of this image
                         state <= DRAWING;
-                    end else if (!slide_show) begin // slide show stopped
+                    end else if ((!slide_show) && (!manual_slide_show_enabled)) begin // slide show stopped
                         state <= IDLE;
-                    end else begin // read from the SD card to the buffer  
-                        if (cycle_count >= (1 << 26)) begin  
-                            cycle_count <= 0;
-                            if (sd_addr >= index_to_write_next_sector) begin // all images shown
-                                state <= IDLE;
-                            end else begin
-                                if (ready) begin // show the next image
-                                    rd <= 1;
-                                    write_inc <= 0;
-                                    mem_to_buffer_wr <= 1; // enable SD card module to write to buffer
-                                    state <= SLIDE_SHOW_SECTOR;
+                    end else begin // read from the SD card to the buffer 
+                        if (manual_slide_show_enabled) begin 
+                            if (manual_slide_show_next) begin
+                                if (sd_addr >= index_to_write_next_sector) begin // all images shown
+                                    state <= IDLE; 
+                                end else begin
+                                    if (ready) begin // show the next image
+                                        rd <= 1;
+                                        write_inc <= 0;
+                                        mem_to_buffer_wr <= 1; // enable SD card module to write to buffer
+                                        state <= SLIDE_SHOW_SECTOR;
+                                    end
                                 end
                             end
                         end else begin
-                            cycle_count <= cycle_count + 1;
+                            if (cycle_count >= (1 << 26)) begin  
+                                cycle_count <= 0;
+                                if (sd_addr >= index_to_write_next_sector) begin // all images shown
+                                    state <= IDLE;
+                                end else begin
+                                    if (ready) begin // show the next image
+                                        rd <= 1;
+                                        write_inc <= 0;
+                                        mem_to_buffer_wr <= 1; // enable SD card module to write to buffer
+                                        state <= SLIDE_SHOW_SECTOR;
+                                    end
+                                end
+                            end else begin
+                                cycle_count <= cycle_count + 1;
+                            end
                         end
                     end
                 end

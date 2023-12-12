@@ -29,6 +29,11 @@ module top_level(
   // Connect switches to LED bank for debugging
   // assign led = sw;
 
+// ** SUGGESTIONS
+// - have the colors wrap around (overflow)
+// - have the cursor width wrap around
+// - store width information as well
+
   // Shh those rgb LEDs (active high)
   assign rgb1[1:0]= 0;
   assign rgb0[1:0] = 0;
@@ -209,6 +214,8 @@ module top_level(
     .sd_reset(sd_reset), 
     .sd_sck(SD_CLK), 
     .sd_cmd(SD_CMD),
+    .manual_slide_show_enabled(sw[5]),
+    .manual_slide_show_next(btn[3]),
     .led(led)
   );
 

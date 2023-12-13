@@ -54,3 +54,4 @@ module cursor(
     end
 
 endmodule
+`default_nettype wire

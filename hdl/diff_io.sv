@@ -116,4 +116,4 @@ module diff_io (
     end
 
 endmodule
-`default_nettype none
+`default_nettype wire

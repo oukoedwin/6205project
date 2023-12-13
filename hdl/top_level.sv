@@ -36,7 +36,6 @@ module top_level(
 // - sw[5]: enable manual slide show (show next image using btn[3] ->  could be changed to presses of the encoder)
 
 
-
   // Shh those rgb LEDs (active high)
   assign rgb1[1:0]= 0;
   assign rgb0[1:0] = 0;
